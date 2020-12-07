@@ -3,6 +3,9 @@ from .base_model import BaseModel
 from . import networks
 
 
+DEFAULT_KERNEL_SIZE = 4
+
+
 class Pix2PixModel(BaseModel):
     """ This class implements the pix2pix model, for learning a mapping from input images to output images given paired data.
 
@@ -33,6 +36,7 @@ class Pix2PixModel(BaseModel):
         if is_train:
             parser.set_defaults(pool_size=0, gan_mode='vanilla')
             parser.add_argument('--lambda_L1', type=float, default=100.0, help='weight for L1 loss')
+        parser.add_argument("--kernel-size", type=int, default=DEFAULT_KERNEL_SIZE, help="Kernel size for generative network")
 
         return parser
 
@@ -53,8 +57,15 @@ class Pix2PixModel(BaseModel):
         else:  # during test time, only load G
             self.model_names = ['G']
         # define networks (both generator and discriminator)
+        try:
+            kernel_size = opt.kernel_size
+        except AttributeError:
+            print("Defaulting to netG kernel size: {}".format(DEFAULT_KERNEL_SIZE))
+            kernel_size = DEFAULT_KERNEL_SIZE
+        else:
+            print("For netG, using kernel size: {}".format(kernel_size))
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
-                                      not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+                                      not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids, kernel_size=kernel_size)
 
         if self.isTrain:  # define a discriminator; conditional GANs need to take both input and output images; Therefore, #channels for D is input_nc + output_nc
             self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf, opt.netD,
